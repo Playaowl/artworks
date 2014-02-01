@@ -1,0 +1,131 @@
+/*
+ * This file is part of the grappendorf.net Arduino Libraries.
+ *
+ * The contents of this file are subject to the Apache License Version
+ * 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is grappendorf.net Arduino Libraries / SRF02.
+ *
+ * The Initial Developer of the Original Code is
+ * Dirk Grappendorf (www.grappendorf.net)
+ * Portions created by the Initial Developer are Copyright (C) 2008-2011
+ * the Initial Developer. All Rights Reserved.
+ */
+
+#if ARDUINO >= 100
+#include "Arduino.h"
+#define WIRE_WRITE Wire.write
+#define WIRE_READ Wire.read
+#else
+#include "WProgram.h"
+#define WIRE_WRITE Wire.send
+#define WIRE_READ Wire.receive
+#endif
+#include "Wire.h"
+#include "SRF02.h"
+
+/** How long it takes for a SRF02 to perform a measurement (milli seconds) */
+const unsigned int READ_DURATION = 65;
+
+/** The default interval between measurements (milli seconds) */
+const unsigned int DEFAULT_INTERVAL = 1000;
+
+unsigned int SRF02::interval = DEFAULT_INTERVAL;
+
+unsigned long SRF02::nextRead[] = {0, 0, 0, 0};
+
+unsigned long SRF02::nextRequest[] = {0, 0, 0, 0};
+
+SRF02 *SRF02::first = 0;
+
+bool SRF02::rangingTriggered[] = {false, false, false, false};
+
+SRF02::SRF02(uint8_t deviceId, uint8_t mode)
+{
+	this->deviceId = deviceId;
+	this->mode = mode;
+	this->value = 0;
+	add();
+}
+
+void SRF02::add()
+{
+	this->next = first;
+	first = this;
+}
+
+void SRF02::initSequence()
+{
+	unsigned int pos=0;
+	for (SRF02 *i = first; i != 0; i = i->next)
+	{
+		nextRequest[pos]=millis()+pos*interval;
+		pos++;
+	}
+
+}
+void SRF02::updateSequence()
+{
+	if (interval == 0)
+	{
+		return;
+	}
+
+	unsigned int pos=0;
+	for (SRF02 *i = first; i != 0; i = i->next)
+	{
+		if (rangingTriggered[pos] && millis() > nextRead[pos])
+		{
+			Wire.beginTransmission(i->deviceId);
+			WIRE_WRITE(2);
+			Wire.endTransmission();
+			Wire.requestFrom(i->deviceId, (uint8_t) 2);
+			i->value = ((unsigned long) WIRE_READ()) << 8;
+			i->value += (unsigned long) WIRE_READ();
+			rangingTriggered[pos] = false;
+		}
+		pos++;
+	}
+	pos=0;
+	for (SRF02 *i = first; i != 0; i = i->next)
+	{
+		if (millis() > nextRequest[pos])
+		{
+			Wire.beginTransmission(i->deviceId);
+			WIRE_WRITE((uint8_t) 0);
+			WIRE_WRITE(i->mode);
+			Wire.endTransmission();
+			nextRead[pos] = millis() + READ_DURATION;
+			nextRequest[pos] = millis() + interval*4;
+			rangingTriggered[pos] = true;
+		}
+		pos++;
+	}
+}
+
+void SRF02::configureDeviceId(uint8_t currentDeviceId, uint8_t newDeviceId)
+{
+	Wire.beginTransmission(currentDeviceId);
+	WIRE_WRITE((uint8_t) 0);
+	WIRE_WRITE((uint8_t) 0xA0);
+	Wire.endTransmission();
+	Wire.beginTransmission(currentDeviceId);
+	WIRE_WRITE((uint8_t) 0);
+	WIRE_WRITE((uint8_t) 0xAA);
+	Wire.endTransmission();
+	Wire.beginTransmission(currentDeviceId);
+	WIRE_WRITE((uint8_t) 0);
+	WIRE_WRITE((uint8_t) 0xA5);
+	Wire.endTransmission();
+	Wire.beginTransmission(currentDeviceId);
+	WIRE_WRITE((uint8_t) 0);
+	WIRE_WRITE(newDeviceId << 1);
+	Wire.endTransmission();
+}
