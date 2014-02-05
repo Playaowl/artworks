@@ -5,9 +5,9 @@
 
 SRF02 srf02[] = {
   SRF02(0x71, SRF02_CENTIMETERS),
-  SRF02(0x72, SRF02_CENTIMETERS)
-    //   SRF02(0x73, SRF02_CENTIMETERS),
-    //  SRF02(0x74, SRF02_CENTIMETERS)
+  SRF02(0x72, SRF02_CENTIMETERS),
+  SRF02(0x73, SRF02_CENTIMETERS),
+  SRF02(0x74, SRF02_CENTIMETERS)
   };
   unsigned long nextPrint = 0;
 unsigned int limit=250;
@@ -26,10 +26,10 @@ void setup() {
 
 }
 void loop() {
-  unsigned long val[2];
+  unsigned long val[4];
   boolean lightOn;
   lightOn=false;
-  for (int i=0; i < 2;i++) {
+  for (int i=0; i < 4;i++) {
     SRF02::updateSequence();
     val[i]=srf02[i].read(); 
     //      Serial.print ("Sensor ");
@@ -52,8 +52,8 @@ void loop() {
   }
   if (Serial.available() > 0) {
     int inByte=Serial.read();
-    for (int i=0; i < 2;i++) {
-      if (i<1) {
+    for (int i=0; i < 4;i++) {
+      if (i<3) {
         Serial.print(val[i]);
         Serial.print(",");
       } 
@@ -63,6 +63,7 @@ void loop() {
     }
   }
 }
+
 
 
 
