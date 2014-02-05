@@ -36,49 +36,49 @@ inputString=serialFromArduino.readline();
 while True:
 	inputString=serialFromArduino.readline();
 	serialFromArduino.write('\r')
-	print 'inputString: '+inputString
+#	print 'inputString: '+inputString
 	inputString=inputString.strip();
 	sensors=inputString.split(',')
-	if (len(sensors) >1):
+	if (inputString[:1].isdigit() and len(sensors) >0):
 		wert0= int(sensors[0])
-		print 'wert0: '+str(wert0)
+#		print 'wert0: '+str(wert0)
 		if (wert0 >0 and wert0< limit):
 			ratio0 = maxOctave - (wert0-offset) / (limit-offset)
 			ratio0 = 1.0-(max(min(wert0,250.0),100.0)-100.0)/150.0
 			#print('max(min(wert0,250.0),100.0)/150'+str( max(min(wert0,250.0),100.0)/150.0))
-			print 'ratio 0: ' + str(ratio0)
-			sound0.set_volume(1.0)
+#			print 'ratio 0: ' + str(ratio0)
+			sound0.set_volume(ratio0)
 		else:
 			sound0.set_volume(0.0)
 			#print 'wert 1: ' + str(wert1 )
 	if (len(sensors)>1):
 		wert1= int(sensors[1])
-		print 'wert1: '+str(wert1)
+#		print 'wert1: '+str(wert1)
 		if (wert1 >0 and wert1< limit):
 			#ratio1 = maxOctave - (wert1 -offset)* (maxOctave - minOctave) / (limit - offset)
 			ratio1 = 1.0-(max(min(wert1,250.0),100.0)-100.0)/150.0
-			print 'ratio 1: ' + str(ratio1)
-			sound1.set_volume(1.0)
+#			print 'ratio 1: ' + str(ratio1)
+			sound1.set_volume(ratio1)
 		else:
 			sound1.set_volume(0.0)
 	if (len(sensors)>2):
 		wert2= int(sensors[2])
-		print 'wert2: '+str(wert2)
+#		print 'wert2: '+str(wert2)
 		if (wert2 >0 and wert2<limit):
 		#ratio2 = maxOctave - (wert2 -offset)* (maxOctave - minOctave) / (limit - offset)
 			ratio2 = 1.0-(max(min(wert2,250.0),100.0)-100.0)/150.0
 		#print 'ratio 2: ' + str(ratio2)
-			sound2.set_volume(1.0)
+			sound2.set_volume(ratio2)
 		else:
 			sound2.set_volume(0.0)
 	if (len(sensors)>3):
 		wert3= int(sensors[3])
-		print 'wert3: '+str(wert3)
+#		print 'wert3: '+str(wert3)
 		if(wert3 >0 and wert3<limit):
 		#ratio3 = maxOctave - (wert3 -offset)* (maxOctave - minOctave) / (limit - offset)
 			ratio3 = 1.0-(max(min(wert3,250.0),100.0)-100.0)/150.0
 		#print 'ratio 3: ' + str(ratio3)
-			sound3.set_volume()
+			sound3.set_volume(ratio3)
 		else:
 			sound3.set_volume(0.0)
 

@@ -93,6 +93,7 @@ void SRF02::updateSequence()
 		}
 		pos++;
 	}
+	unsigned int numSensors=pos;
 	pos=0;
 	for (SRF02 *i = first; i != 0; i = i->next)
 	{
@@ -103,7 +104,7 @@ void SRF02::updateSequence()
 			WIRE_WRITE(i->mode);
 			Wire.endTransmission();
 			nextRead[pos] = millis() + READ_DURATION;
-			nextRequest[pos] = millis() + interval*4;
+			nextRequest[pos] = millis() + interval*(numSensors);
 			rangingTriggered[pos] = true;
 		}
 		pos++;

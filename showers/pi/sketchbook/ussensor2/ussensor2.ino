@@ -4,12 +4,13 @@
 #include <SRF02.h>
 
 SRF02 srf02[] = {
-  SRF02(0x71, SRF02_CENTIMETERS),
-  SRF02(0x72, SRF02_CENTIMETERS),
-  SRF02(0x73, SRF02_CENTIMETERS),
-  SRF02(0x74, SRF02_CENTIMETERS)
+//  SRF02(0x71, SRF02_CENTIMETERS),
+  SRF02(0x72, SRF02_CENTIMETERS)
+//  SRF02(0x73, SRF02_CENTIMETERS),
+//  SRF02(0x74, SRF02_CENTIMETERS)
   };
   unsigned long nextPrint = 0;
+  int numSensors=1;
 unsigned int limit=250;
 unsigned long nachlauf=5000;
 unsigned long time=millis()+nachlauf;
@@ -29,7 +30,7 @@ void loop() {
   unsigned long val[4];
   boolean lightOn;
   lightOn=false;
-  for (int i=0; i < 4;i++) {
+  for (int i=0; i < numSensors;i++) {
     SRF02::updateSequence();
     val[i]=srf02[i].read(); 
     //      Serial.print ("Sensor ");
@@ -52,8 +53,8 @@ void loop() {
   }
   if (Serial.available() > 0) {
     int inByte=Serial.read();
-    for (int i=0; i < 4;i++) {
-      if (i<3) {
+    for (int i=0; i < numSensors;i++) {
+      if (i<numSensors-1) {
         Serial.print(val[i]);
         Serial.print(",");
       } 
