@@ -2,6 +2,8 @@ import os, sys, time, wave, pygame, pygame.mixer, numpy, pyaudio, scikits.sample
 
 numSensors=4
 limit = 250 #in cm, alles was darueber ist wird ignoriert
+minDistanz = 50.0
+maxDistanz=150.0
 minOctave= 0.0
 maxOctave= 1.0
 offset=100
@@ -14,10 +16,10 @@ port="/dev/ttyACM0"
 serialFromArduino = serial.Serial(port, 9600)
 serialFromArduino.flushInput()
 pygame.mixer.init(48000, -16,1,4096)
-sound0= pygame.mixer.Sound("Downloads/103591__timbre__103539-timbre-15362-djgriffin-tibetan-chant-1-stretchedx3-bassy-tail-3.wav")
-sound1= pygame.mixer.Sound("Downloads/64620__falsalama__om-gate-gate-paragate-parasamgate-bodhi-soha.wav")
-sound2= pygame.mixer.Sound("Downloads/134984__zigzag20705__untitled-shower-2.wav")
-sound3= pygame.mixer.Sound("Downloads/145298__zabuhailo__shower.wav")
+sound0= pygame.mixer.Sound("Downloads/shower.wav")
+sound1= pygame.mixer.Sound("Downloads/om.wav")
+sound2= pygame.mixer.Sound("Downloads/shower.wav")
+sound3= pygame.mixer.Sound("Downloads/om.wav")
 soundChannel0= pygame.mixer.Channel(0)
 soundChannel1= pygame.mixer.Channel(1)
 soundChannel2= pygame.mixer.Channel(2)
@@ -44,8 +46,8 @@ while True:
 #		print 'wert0: '+str(wert0)
 		if (wert0 >0 and wert0< limit):
 			ratio0 = maxOctave - (wert0-offset) / (limit-offset)
-			ratio0 = 1.0-(max(min(wert0,250.0),100.0)-100.0)/150.0
-			#print('max(min(wert0,250.0),100.0)/150'+str( max(min(wert0,250.0),100.0)/150.0))
+			ratio0 = 1.0-(max(min(wert0,maxDistanz),minDistanz)-minDistanz)/(maxDistanz-minDistanz)
+#			print('max(min(wert0,250.0),100.0)/150'+str( max(min(wert0,250.0),100.0)/150.0))
 #			print 'ratio 0: ' + str(ratio0)
 			sound0.set_volume(ratio0)
 		else:
@@ -56,7 +58,7 @@ while True:
 #		print 'wert1: '+str(wert1)
 		if (wert1 >0 and wert1< limit):
 			#ratio1 = maxOctave - (wert1 -offset)* (maxOctave - minOctave) / (limit - offset)
-			ratio1 = 1.0-(max(min(wert1,250.0),100.0)-100.0)/150.0
+			ratio1 = 1.0-(max(min(wert0,maxDistanz),minDistanz)-minDistanz)/(maxDistanz-minDistanz)
 #			print 'ratio 1: ' + str(ratio1)
 			sound1.set_volume(ratio1)
 		else:
