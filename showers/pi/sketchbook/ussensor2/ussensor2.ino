@@ -4,13 +4,13 @@
 #include <SRF02.h>
 
 SRF02 srf02[] = {
-  SRF02(0x71, SRF02_CENTIMETERS),
+  //SRF02(0x71, SRF02_CENTIMETERS),
   SRF02(0x72, SRF02_CENTIMETERS),
-  SRF02(0x73, SRF02_CENTIMETERS),
+  //SRF02(0x73, SRF02_CENTIMETERS),
   SRF02(0x74, SRF02_CENTIMETERS)
   };
   unsigned long nextPrint = 0;
-  int numSensors=4;
+  int numSensors=2;
 unsigned int limit=250;
 unsigned long nachlauf=5000;
 unsigned long time=millis()+nachlauf;
