@@ -1,3 +1,6 @@
+#include <SM.h>
+
+
 #include <Ultrasonic.h>
 
 #include "FastLED.h"
@@ -11,17 +14,13 @@
 // ground, and power), like the LPD8806 define both DATA_PIN and CLOCK_PIN
 #define DATA_PIN 11
 #define CLOCK_PIN 13
+int pingPin = 10;
+int inPin = 12;
 
 // Define the array of leds
 CRGB leds[NUM_LEDS];
 float temperaturen[64];
 float temperaturenHottie[64];
-
-#define STATUS_START 0
-#define STATUS_FRAGE 1
-#define STATUS_ANTWORT1 2
-#define STATUS_ANTWORT2 3
-#define STATUS_ENDE 4
 //#define AREA_UEBERSCHRIFT_BEGIN 0
 //#define AREA_UEBERSCHRIFT_ENDE 16
 //#define AREA_FRAGE_BEGIN 16
@@ -48,31 +47,16 @@ byte pixelTempH;
 int ledNum = 1;
 char addr = 0x69;
 float celsius;
-int ueberschriftState = LOW;
-int frageState = LOW;
-int antwort1State = LOW;
-int antwort2State = LOW;
-int status=STATUS_START;
-unsigned long startMillis = millis();
-unsigned long startZyklus = millis();
-long interval = 1000; 
 
-long dauerStatusStart= 10000;
-long dauerStatusFrage= 20000;
-long dauerStatusAntwort= 30000;
-long dauerStatusEnde= 60000;
-
-unsigned long previousMillis = 0;
-
-
+SM Simple(detectPerson);
 void setup() {
   FastLED.addLeds<WS2801, RGB>(leds, NUM_LEDS);
 
   //Clear out the array
-  for(int i = 0 ; i < NUM_LEDS ; i++){
+  for (int i = 0 ; i < NUM_LEDS ; i++) {
     leds[i] = CRGB::Black;
   }
-  for(int pixel = AREA_UEBERSCHRIFT_BEGIN; pixel < AREA_UEBERSCHRIFT_ENDE; pixel++) {
+  for (int pixel = AREA_UEBERSCHRIFT_BEGIN; pixel < AREA_UEBERSCHRIFT_ENDE; pixel++) {
     leds[pixel] = CRGB::White;
   }
 
@@ -91,146 +75,181 @@ void setup() {
 
 
 void loop() {
-  unsigned long currentMillis = millis();
-  delay(1);
-  unsigned long laufzeit=currentMillis - startZyklus;
-  if (laufzeit < dauerStatusStart) {
-    status=STATUS_START;
-  } 
-  else if  (laufzeit < dauerStatusFrage) {
-    status=STATUS_FRAGE;
-  } 
-  else if  (laufzeit < dauerStatusAntwort) {
-    status=STATUS_ANTWORT1;
-  } 
-  else if  (laufzeit < dauerStatusEnde) {
-    status=STATUS_ENDE;
-  } 
-  else{
-    startZyklus=millis();
-  }
-  if(status==STATUS_FRAGE) {
-
-    for(int pixel = AREA_FRAGE_BEGIN; pixel < AREA_FRAGE_ENDE; pixel++) {
-      leds[pixel]=CRGB::White;
-    }
-  } 
-  else{
-    for (int pixel=AREA_FRAGE_BEGIN;pixel < AREA_FRAGE_ENDE;pixel++) {
-      leds[pixel]=CRGB::Black;
-    }
-  }
-  if(status==STATUS_ANTWORT1) {
-    for(int pixel = AREA_ANTWORT1_BEGIN; pixel < AREA_ANTWORT1_ENDE; pixel++) {
-      leds[pixel]=CRGB::White;
-    }
-  } 
-  else{
-    for (int pixel=AREA_ANTWORT1_BEGIN;pixel < AREA_ANTWORT1_ENDE;pixel++) {
-      leds[pixel]=CRGB::Black;
-    }
-  }
-  if(status==STATUS_ANTWORT2) {
-    for(int pixel = AREA_ANTWORT2_BEGIN; pixel < AREA_ANTWORT2_ENDE; pixel++) {
-      leds[pixel]=CRGB::White;
-    }
-  } 
-  else{
-    for (int pixel=AREA_ANTWORT2_BEGIN;pixel < AREA_ANTWORT2_ENDE;pixel++) {
-      leds[pixel]=CRGB::Black;
-    }
-  }
-  if (status!=STATUS_ENDE) {
-    //First two data registers for the pixel temp data are 0x80 and 0x81
-    pixelTempL=0x80;
-    pixelTempH=0x81;
-    //Get Temperature Data for each pixel in the 8x8 array. Will loop 64 times.
-    float max=0;
-    float summe=0;
-    for(int pixel = AREA_MATRIX_BEGIN,  pos=0; pixel < AREA_MATRIX_ENDE; pixel++, pos++){
-      //Get lower level pixel temp byte
-      Wire.beginTransmission(addr);
-      Wire.write(pixelTempL);
-      Wire.endTransmission();
-      Wire.requestFrom(addr,1);
-      byte lowerLevel = Wire.read(); //
-      //Get upper level pixel temp byte
-      Wire.beginTransmission(addr);
-      Wire.write(pixelTempH);
-      Wire.endTransmission();
-      Wire.requestFrom(addr,1);
-      byte upperLevel = Wire.read();
-      //Combine the two bytes together to complete the 12-bit temp reading
-      int temperature = ((upperLevel << 8) | lowerLevel);
-      //Temperature data is in two's compliment, do conversion.
-      if (upperLevel != 0)
-      {
-        temperature = -(2048 - temperature);
-      }
-      celsius = temperature*0.25;
-      if (status==STATUS_FRAGE){
-        if (celsius > max) {
-          max=celsius;
-        }
-        summe+=celsius;
-
-        temperaturen[pos]=celsius;
-      }
-      //Determine LED color based on temperature of pixel
-      if (status==STATUS_FRAGE||status==STATUS_ANTWORT1) {
-        leds[pixel]=calcTemperatur(celsius);
-      } 
-      else {
-        leds[pixel]=CRGB::Black;
-      }
-      //Go to next pixel by advancing both the low and high bit two register values
-      pixelTempL=pixelTempL+2;
-      pixelTempH=pixelTempH+2;
-    }
-    //Thermistor Register - Optional
-    Wire.beginTransmission(addr);
-    Wire.write(0x0E);
-    Wire.endTransmission();
-    Wire.requestFrom(addr,1);
-    byte upperLevelTherm = Wire.read();
-    Wire.beginTransmission(addr);
-    Wire.write(0x0F);
-    Wire.endTransmission();
-    Wire.requestFrom(addr,1);
-    byte lowerLevelTherm = Wire.read();
-    int temperatureTherm = ((lowerLevelTherm << 8) | upperLevelTherm);
-    int celsiusTherm = temperatureTherm*0.0625;
-
-
-  } 
-  else {
-    for(int pixel = AREA_MATRIX_BEGIN; pixel < AREA_MATRIX_ENDE; pixel++){
-      leds[pixel]=CRGB::Black;
-    }
-  }
-  FastLED.show();
+  EXEC(Simple);
 }
 
 
 
 
-CRGB calcTemperatur(float celsius){
+State askQuestion()
+{
+  for (int pixel = AREA_FRAGE_BEGIN; pixel < AREA_FRAGE_ENDE; pixel++) {
+    leds[pixel] = CRGB::White;
+  }
+  FastLED.show();
+
+  //Audio Out, wait 5 sec
+  if (Simple.Timeout(10000)) {
+    for (int pixel = AREA_FRAGE_BEGIN; pixel < AREA_FRAGE_ENDE; pixel++) {
+      leds[pixel] = CRGB::Black;
+    }
+    FastLED.show();
+
+    Simple.Set(waitForQuestion);
+  }
+}
+
+State  waitForQuestion() {
+  //Audio In, detect sound, wait 10 src
+  if (Simple.Timeout(10000)) {
+    Simple.Set(showPicture);
+  }
+}
+
+State showPicture() {
+  //show Picture for 10 src
+
+
+  boolean hot = updatePicture();
+  if (Simple.Timeout(10000)) {
+    if (hot) {
+      Simple.Set(answerHot);
+    }  else {
+      Simple.Set(answerNot);
+
+
+    }
+  }
+}
+
+State answerHot()
+{
+  for (int pixel = AREA_ANTWORT1_BEGIN; pixel < AREA_ANTWORT1_ENDE; pixel++) {
+    leds[pixel] = CRGB::White;
+  }
+  FastLED.show();
+
+  //Audio Out, wait 5 sec
+  if (Simple.Timeout(10000)) {
+    for (int pixel = AREA_ANTWORT1_BEGIN; pixel < AREA_ANTWORT1_ENDE; pixel++) {
+      leds[pixel] = CRGB::Black;
+    }  FastLED.show();
+
+    Simple.Set(noop);
+  }
+}
+
+State answerNot()
+{
+  for (int pixel = AREA_ANTWORT2_BEGIN; pixel < AREA_ANTWORT2_ENDE; pixel++) {
+    leds[pixel] = CRGB::White;
+  }
+  FastLED.show();
+
+  //Audio Out, wait 5 sec
+  if (Simple.Timeout(10000)) {
+    for (int pixel = AREA_ANTWORT2_BEGIN; pixel < AREA_ANTWORT2_ENDE; pixel++) {
+      leds[pixel] = CRGB::Black;
+    }  FastLED.show();
+
+    Simple.Set(noop);
+  }
+}
+
+
+boolean updatePicture() {
+  //First two data registers for the pixel temp data are 0x80 and 0x81
+  pixelTempL = 0x80;
+  pixelTempH = 0x81;
+  //Get Temperature Data for each pixel in the 8x8 array. Will loop 64 times.
+  float max = 0;
+  float summe = 0;
+  for (int pixel = AREA_MATRIX_BEGIN,  pos = 0; pixel < AREA_MATRIX_ENDE; pixel++, pos++) {
+    //Get lower level pixel temp byte
+    Wire.beginTransmission(addr);
+    Wire.write(pixelTempL);
+    Wire.endTransmission();
+    Wire.requestFrom(addr, 1);
+    byte lowerLevel = Wire.read(); //
+    //Get upper level pixel temp byte
+    Wire.beginTransmission(addr);
+    Wire.write(pixelTempH);
+    Wire.endTransmission();
+    Wire.requestFrom(addr, 1);
+    byte upperLevel = Wire.read();
+    //Combine the two bytes together to complete the 12-bit temp reading
+    int temperature = ((upperLevel << 8) | lowerLevel);
+    //Temperature data is in two's compliment, do conversion.
+    if (upperLevel != 0)
+    {
+      temperature = -(2048 - temperature);
+    }
+    celsius = temperature * 0.25;
+    //     if (status==STATUS_FRAGE){
+    if (celsius > max) {
+      max = celsius;
+    }
+    summe += celsius;
+
+    temperaturen[pos] = celsius;
+    //     }
+    //Determine LED color based on temperature of pixel
+    //     if (status==STATUS_FRAGE||status==STATUS_ANTWORT1) {
+    leds[pixel] = calcTemperatur(celsius);
+    //      }
+    //      else {
+    //        leds[pixel]=CRGB::Black;
+    //      }
+    //Go to next pixel by advancing both the low and high bit two register values
+    pixelTempL = pixelTempL + 2;
+    pixelTempH = pixelTempH + 2;
+  }
+  //Thermistor Register - Optional
+  Wire.beginTransmission(addr);
+  Wire.write(0x0E);
+  Wire.endTransmission();
+  Wire.requestFrom(addr, 1);
+  byte upperLevelTherm = Wire.read();
+  Wire.beginTransmission(addr);
+  Wire.write(0x0F);
+  Wire.endTransmission();
+  Wire.requestFrom(addr, 1);
+  byte lowerLevelTherm = Wire.read();
+  int temperatureTherm = ((lowerLevelTherm << 8) | upperLevelTherm);
+  int celsiusTherm = temperatureTherm * 0.0625;
+
+  FastLED.show();
+
+
+
+}
+
+State  noop() {
+  //Audio In, detect sound, wait 10 src
+  if (Simple.Timeout(20000)) {
+    Simple.Set(detectPerson);
+  }
+}
+
+
+
+CRGB calcTemperatur(float celsius) {
   CRGB color;
 
   if (celsius < 20.0)
   {
-    color=CRGB::Black;
-  } 
-  else if (celsius >=20.0 && celsius <=45.0)
+    color = CRGB::Black;
+  }
+  else if (celsius >= 20.0 && celsius <= 45.0)
   {
-    int colorvalue=160+(celsius-20)*3.84;
-    color=CHSV( colorvalue, 255, 255);
-    } 
+    int colorvalue = 160 + (celsius - 20) * 3.84;
+    color = CHSV( colorvalue, 255, 255);
+  }
   else
   {
-    color=CHSV( 0, 255, 255);
+    color = CHSV( 0, 255, 255);
   }
- 
+
   return color;
 }
 
@@ -244,19 +263,19 @@ CRGB calcTemperatur(float celsius){
 //int sampleSpan = 5; // Amount in milliseconds to sample data
 //int volume; // this roughly goes from 0 to 700
 //
-//void setup() 
+//void setup()
 //{
-//    Serial.begin(9600); 
+//    Serial.begin(9600);
 //    resetValues();
 //}
 //
-//void loop() 
+//void loop()
 //{
 //    currentValue = analogRead(A0);
 //
 //    if (currentValue < minValue) {
 //        minValue = currentValue;
-//    } 
+//    }
 //    if (currentValue > maxValue) {
 //        maxValue = currentValue;
 //    }
@@ -274,48 +293,57 @@ CRGB calcTemperatur(float celsius){
 //{
 //    maxValue = 0;
 //    minValue = 1024;
-//    timer = millis(); 
+//    timer = millis();
 //}
 //
 
-//#include <Ultrasonic.h>
-//
-//#define TRIGGER_PIN  12
-//#define ECHO_PIN     13
-//
-//Ultrasonic ultrasonic(TRIGGER_PIN, ECHO_PIN);
-//int led1 = 9;
-//int led2 = 8;
-//void setup()
-//  {
-//  Serial.begin(9600);
-//  pinMode(led1, OUTPUT);
-//  pinMode(led2, OUTPUT);
-//  }
-//
-//void loop()
-//  {
-//  float cmMsec, inMsec;
-//  long microsec = ultrasonic.timing();   //funktion, welche die zeit berechnet
-//
-//  cmMsec = ultrasonic.convert(microsec, Ultrasonic::CM); //rechnet die gemessene Zeit in cm um
-//  inMsec = ultrasonic.convert(microsec, Ultrasonic::IN);   // Inch
-//  Serial.print("MS: ");
-//  Serial.print(microsec);
-//  Serial.print(", CM: ");
-//  Serial.print(cmMsec);
-//  Serial.print(", IN: ");
-//  Serial.println(inMsec);
-//  delay(100);
-//  if (cmMsec > 10){                         //hier ist klar was passiert
-//    digitalWrite(led1,HIGH);
-//    digitalWrite(led2,LOW);
-//  }
-//  else {
-//    digitalWrite(led1,LOW);
-//    digitalWrite(led2,HIGH);
-//  }
-//  }
-// 
 
+State detectPerson()
+{
+  // establish variables for duration of the ping,
+  // and the distance result in inches and centimeters:
+  long duration, inches, cm;
+
+  // The PING))) is triggered by a HIGH pulse of 2 or more microseconds.
+  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
+  pinMode(pingPin, OUTPUT);
+  digitalWrite(pingPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(pingPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(pingPin, LOW);
+
+  // The same pin is used to read the signal from the PING))): a HIGH
+  // pulse whose duration is the time (in microseconds) from the sending
+  // of the ping to the reception of its echo off of an object.
+  pinMode(inPin, INPUT);
+  duration = pulseIn(inPin, HIGH);
+
+  // convert the time into a distance
+  inches = microsecondsToInches(duration);
+  cm = microsecondsToCentimeters(duration);
+
+  delay(100);
+  if (cm < 200) {
+    Simple.Set(askQuestion);
+  }
+
+}
+
+long microsecondsToInches(long microseconds)
+{
+  // According to Parallax's datasheet for the PING))), there are
+  // 73.746 microseconds per inch (i.e. sound travels at 1130 feet per
+  // second).  This gives the distance travelled by the ping, outbound
+  // and return, so we divide by 2 to get the distance of the obstacle.
+  return microseconds / 74 / 2;
+}
+
+long microsecondsToCentimeters(long microseconds)
+{
+  // The speed of sound is 340 m/s or 29 microseconds per centimeter.
+  // The ping travels out and back, so to find the distance of the
+  // object we take half of the distance travelled.
+  return microseconds / 29 / 2;
+}
 
