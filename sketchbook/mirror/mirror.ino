@@ -1,3 +1,5 @@
+#include <Wtv020sd16p.h>
+
 #include <SM.h>
 
 
@@ -14,8 +16,8 @@
 // ground, and power), like the LPD8806 define both DATA_PIN and CLOCK_PIN
 #define DATA_PIN 11
 #define CLOCK_PIN 13
-int pingPin = 10;
-int inPin = 12;
+#define echoPin 7 // Echo Pin
+#define trigPin 8 // Trigger Pin
 
 // Define the array of leds
 CRGB leds[NUM_LEDS];
@@ -300,34 +302,38 @@ CRGB calcTemperatur(float celsius) {
 
 State detectPerson()
 {
-  // establish variables for duration of the ping,
+  
+  delay(100);
+  if (ping() < 200) {
+    Simple.Set(askQuestion);
+  }
+
+}
+
+long ping() {
+// establish variables for duration of the ping,
   // and the distance result in inches and centimeters:
   long duration, inches, cm;
 
   // The PING))) is triggered by a HIGH pulse of 2 or more microseconds.
   // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
-  pinMode(pingPin, OUTPUT);
-  digitalWrite(pingPin, LOW);
+  pinMode(trigPin, OUTPUT);
+  digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
-  digitalWrite(pingPin, HIGH);
+  digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
-  digitalWrite(pingPin, LOW);
+  digitalWrite(trigPin, LOW);
 
   // The same pin is used to read the signal from the PING))): a HIGH
   // pulse whose duration is the time (in microseconds) from the sending
   // of the ping to the reception of its echo off of an object.
-  pinMode(inPin, INPUT);
-  duration = pulseIn(inPin, HIGH);
+  pinMode(echoPin, INPUT);
+  duration = pulseIn(echoPin, HIGH);
 
   // convert the time into a distance
   inches = microsecondsToInches(duration);
   cm = microsecondsToCentimeters(duration);
-
-  delay(100);
-  if (cm < 200) {
-    Simple.Set(askQuestion);
-  }
-
+  return cm;
 }
 
 long microsecondsToInches(long microseconds)
