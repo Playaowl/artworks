@@ -18,6 +18,10 @@
 #define CLOCK_PIN 13
 #define echoPin 7 // Echo Pin
 #define trigPin 8 // Trigger Pin
+int resetPin = 2;  // The pin number of the reset pin.
+int clockPin = 3;  // The pin number of the clock pin.
+int dataPin = 4;  // The pin number of the data pin.
+int busyPin = 5;  // The pin number of the busy pin.
 
 // Define the array of leds
 CRGB leds[NUM_LEDS];
@@ -49,18 +53,22 @@ byte pixelTempH;
 int ledNum = 1;
 char addr = 0x69;
 float celsius;
+Wtv020sd16p wtv020sd16p(resetPin, clockPin, dataPin, busyPin);
+//Ultrasonic ultrasonic(trigPin,echoPin); //Ultrasonic ultrasonic(Trig,Echo);
 
 SM Simple(detectPerson);
 void setup() {
-  FastLED.addLeds<WS2801, RGB>(leds, NUM_LEDS);
+  wtv020sd16p.reset();
 
-  //Clear out the array
-  for (int i = 0 ; i < NUM_LEDS ; i++) {
-    leds[i] = CRGB::Black;
-  }
-  for (int pixel = AREA_UEBERSCHRIFT_BEGIN; pixel < AREA_UEBERSCHRIFT_ENDE; pixel++) {
-    leds[pixel] = CRGB::White;
-  }
+//  FastLED.addLeds<WS2801, RGB>(leds, NUM_LEDS);
+//
+//  //Clear out the array
+//  for (int i = 0 ; i < NUM_LEDS ; i++) {
+//    leds[i] = CRGB::Black;
+//  }
+//  for (int pixel = AREA_UEBERSCHRIFT_BEGIN; pixel < AREA_UEBERSCHRIFT_ENDE; pixel++) {
+//    leds[pixel] = CRGB::White;
+//  }
 
   Wire.begin();
   //  Serial.begin(115200);
@@ -80,11 +88,32 @@ void loop() {
   EXEC(Simple);
 }
 
+State detectPerson()
+{
+
+    Serial.println(" detectPerson "); 
+//int cm=ultrasonic.Ranging(CM);
+//Serial.println(cm); 
+
+//  if (cm < 20) {
+    Simple.Set(askQuestion);
+//  }
+
+}
+
 
 
 
 State askQuestion()
 {
+  wtv020sd16p.playVoice(0);
+  Simple.Set(askQuestion1);
+}
+
+State askQuestion1()
+{
+Simple.Finish();
+  Serial.println(" inAskQuestion "); 
   for (int pixel = AREA_FRAGE_BEGIN; pixel < AREA_FRAGE_ENDE; pixel++) {
     leds[pixel] = CRGB::White;
   }
@@ -102,6 +131,7 @@ State askQuestion()
 }
 
 State  waitForQuestion() {
+  Serial.println(" waitForQuestion "); 
   //Audio In, detect sound, wait 10 src
   if (Simple.Timeout(10000)) {
     Simple.Set(showPicture);
@@ -126,6 +156,14 @@ State showPicture() {
 
 State answerHot()
 {
+    wtv020sd16p.asyncPlayVoice(1);
+        Simple.Set(answerHot1);
+
+}
+State answerHot1()
+{
+    Serial.println(" answerHot "); 
+
   for (int pixel = AREA_ANTWORT1_BEGIN; pixel < AREA_ANTWORT1_ENDE; pixel++) {
     leds[pixel] = CRGB::White;
   }
@@ -143,10 +181,12 @@ State answerHot()
 
 State answerNot()
 {
+    Serial.println(" answerNot "); 
   for (int pixel = AREA_ANTWORT2_BEGIN; pixel < AREA_ANTWORT2_ENDE; pixel++) {
     leds[pixel] = CRGB::White;
   }
   FastLED.show();
+  wtv020sd16p.asyncPlayVoice(2);
 
   //Audio Out, wait 5 sec
   if (Simple.Timeout(10000)) {
@@ -227,6 +267,7 @@ boolean updatePicture() {
 }
 
 State  noop() {
+    Serial.println(" noop "); 
   //Audio In, detect sound, wait 10 src
   if (Simple.Timeout(20000)) {
     Simple.Set(detectPerson);
@@ -300,56 +341,49 @@ CRGB calcTemperatur(float celsius) {
 //
 
 
-State detectPerson()
-{
-  
-  delay(100);
-  if (ping() < 200) {
-    Simple.Set(askQuestion);
-  }
-
-}
-
-long ping() {
-// establish variables for duration of the ping,
-  // and the distance result in inches and centimeters:
-  long duration, inches, cm;
-
-  // The PING))) is triggered by a HIGH pulse of 2 or more microseconds.
-  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
-  pinMode(trigPin, OUTPUT);
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-
-  // The same pin is used to read the signal from the PING))): a HIGH
-  // pulse whose duration is the time (in microseconds) from the sending
-  // of the ping to the reception of its echo off of an object.
-  pinMode(echoPin, INPUT);
-  duration = pulseIn(echoPin, HIGH);
-
-  // convert the time into a distance
-  inches = microsecondsToInches(duration);
-  cm = microsecondsToCentimeters(duration);
-  return cm;
-}
-
-long microsecondsToInches(long microseconds)
-{
-  // According to Parallax's datasheet for the PING))), there are
-  // 73.746 microseconds per inch (i.e. sound travels at 1130 feet per
-  // second).  This gives the distance travelled by the ping, outbound
-  // and return, so we divide by 2 to get the distance of the obstacle.
-  return microseconds / 74 / 2;
-}
-
-long microsecondsToCentimeters(long microseconds)
-{
-  // The speed of sound is 340 m/s or 29 microseconds per centimeter.
-  // The ping travels out and back, so to find the distance of the
-  // object we take half of the distance travelled.
-  return microseconds / 29 / 2;
-}
+//
+//long ping() {
+//  // establish variables for duration of the ping,
+//  // and the distance result in inches and centimeters:
+//  long duration, inches, cm;
+//
+//  // The PING))) is triggered by a HIGH pulse of 2 or more microseconds.
+//  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
+//  pinMode(trigPin, OUTPUT);
+//  digitalWrite(trigPin, LOW);
+//  delayMicroseconds(2);
+//  digitalWrite(trigPin, HIGH);
+//  delayMicroseconds(10);
+//  digitalWrite(trigPin, LOW);
+//
+//  // The same pin is used to read the signal from the PING))): a HIGH
+//  // pulse whose duration is the time (in microseconds) from the sending
+//  // of the ping to the reception of its echo off of an object.
+//  pinMode(echoPin, INPUT);
+//  duration = pulseIn(echoPin, HIGH);
+//
+//  // convert the time into a distance
+//  inches = microsecondsToInches(duration);
+//  cm = microsecondsToCentimeters(duration);
+//      Serial.println(cm); 
+//
+//  return cm;
+//}
+//
+//long microsecondsToInches(long microseconds)
+//{
+//  // According to Parallax's datasheet for the PING))), there are
+//  // 73.746 microseconds per inch (i.e. sound travels at 1130 feet per
+//  // second).  This gives the distance travelled by the ping, outbound
+//  // and return, so we divide by 2 to get the distance of the obstacle.
+//  return microseconds / 74 / 2;
+//}
+//
+//long microsecondsToCentimeters(long microseconds)
+//{
+//  // The speed of sound is 340 m/s or 29 microseconds per centimeter.
+//  // The ping travels out and back, so to find the distance of the
+//  // object we take half of the distance travelled.
+//  return microseconds / 29 / 2;
+//}
 
