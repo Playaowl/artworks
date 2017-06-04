@@ -1,0 +1,10 @@
+sudo apt-get install python3-scipy
+sudo apt-get install python3-pyaudio
+sudo apt-get install python3-pygame
+sudo apt-get install python3-pip
+sudo apt-get install libsamplerate0 libsamplerate0-dev
+sudo pip3 install scikits.samplerate
+sudo pip install scikits.samplerate
+sudo apt-get install python-pip
+sudo apt-get install python-numpy
+sudo apt-get install python-serial
